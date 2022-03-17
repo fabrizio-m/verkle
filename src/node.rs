@@ -69,8 +69,6 @@ where
         }
     }
     pub(crate) fn get(&self, mut key: BitVec) -> Option<&V> {
-        //let fix = 3;
-        //todo!()
         match self {
             Node::Internal { children, .. } => {
                 let suffix = key.split_off(WIDTH);
@@ -109,8 +107,6 @@ where
         scheme: &mut C,
         precomputation: &Precomputation<P, C>,
     ) -> Self {
-        //println!("stems {:?}", stem_so_far);
-        //println!("key: {:?}", key);
         match self {
             Node::Internal {
                 commitment,
@@ -122,7 +118,6 @@ where
                 let prefix = Self::bits_to_key(prefix_bits.clone());
 
                 if children.contains_key(&prefix) {
-                    //let child = children.get(&prefix).unwrap();
                     let prev_hash = children.get(&prefix).unwrap().get_commitment_hash();
                     let position = u32::from_le_bytes(prefix) as usize;
                     let child = children
@@ -178,8 +173,6 @@ where
                 mut values,
             } => {
                 let (new_stem, suffix) = Self::stem_and_key(&stem_so_far, &key);
-                //println!("new_stem: {:?}", new_stem);
-                //println!("    stem: {:?}", stem);
                 if stem == new_stem {
                     let key = Self::bits_to_key(suffix);
                     let position = u32::from_le_bytes(key) as usize;
@@ -265,16 +258,12 @@ where
         right: Self,
         precomputation: &Precomputation<P, C>,
     ) -> Self {
-        //println!("left node: {:#?}", left);
-        //println!("right node: {:#?}", right8);
         let [left_key, right_key] = [&left, &right].map(|node| {
             let key = node.get_stem().iter().skip(stem_so_far.len()).chunks(WIDTH);
             key.into_iter().map(BitVec::from_iter).collect::<Vec<_>>()
         });
         let sections = left_key.into_iter().zip(right_key.into_iter());
         let (common, difference) = sections.partition::<Vec<_>, _>(|(left, right)| left == right);
-        //println!("common: {:?}", common);
-        //println!("diff: {:?}", difference);
         let keys = difference.into_iter().find(|_| true).unwrap();
 
         let commitment = [(&keys.0, &left), (&keys.1, &right)]
@@ -296,7 +285,6 @@ where
             children,
             commitment,
         };
-        //println!("last internal: {:#?}", last_internal);
         common
             .into_iter()
             .rev()
@@ -359,13 +347,11 @@ where
         &self,
         key: BitVec,
     ) -> Option<(Vec<(C::Commitment, [u8; 4])>, (&V, &C::Commitment))> {
-        //println!("key: {:?}", key);
         match self {
             Node::Internal {
                 children,
                 commitment,
             } => {
-                //println!("internal");
                 let mut prefix = key;
                 let suffix = prefix.split_off(WIDTH);
                 let key = Self::bits_to_key(prefix);
@@ -434,19 +420,13 @@ where
                 stem,
                 values_commitments,
                 values,
-            } => {
-                //let values = values
-                //.iter()
-                //.map(|(key, val)| format!("{:?}: {}", key, val))
-                //.collect::<Vec<_>>();
-
-                f.debug_struct("Value")
-                    .field("commitment", commitment)
-                    .field("stem", stem)
-                    .field("values_commitments", values_commitments)
-                    .field("values", &values)
-                    .finish()
-            }
+            } => f
+                .debug_struct("Value")
+                .field("commitment", commitment)
+                .field("stem", stem)
+                .field("values_commitments", values_commitments)
+                .field("values", &values)
+                .finish(),
             Node::Default => {
                 unreachable!()
             }

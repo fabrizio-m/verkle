@@ -102,7 +102,6 @@ where
     K: Into<BitVec>,
 {
     scheme: C,
-    //root: Node<P, C, V, DEPTH, WIDTH>,
     key: PhantomData<K>,
     value: PhantomData<V>,
     domain: GeneralEvaluationDomain<Fr<P>>,
