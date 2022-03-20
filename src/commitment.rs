@@ -30,7 +30,13 @@ where
 
     fn init(init: Self::Init) -> Self;
     fn commit(&mut self, coefficients: impl Into<Vec<Fr<P>>>) -> Self::Commitment;
-    fn open(&mut self, commitment: Self::Commitment, point: Fr<P>, eval: Fr<P>) -> Self::Opening;
+    fn open(
+        &mut self,
+        commitment: Self::Commitment,
+        coeffs: &[Fr<P>],
+        point: Fr<P>,
+        eval: Fr<P>,
+    ) -> Self::Opening;
     fn verify(
         &mut self,
         commitment: Self::Commitment,

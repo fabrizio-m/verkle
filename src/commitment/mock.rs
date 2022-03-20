@@ -73,11 +73,14 @@ impl CommitmentScheme<PallasParameters> for MockScheme {
     fn open(
         &mut self,
         commitment: Self::Commitment,
+        coeffs: &[crate::Fr<PallasParameters>],
         point: crate::Fr<PallasParameters>,
         _eval: crate::Fr<PallasParameters>,
     ) -> Self::Opening {
+        let true_eval = DensePolynomial::from_coefficients_slice(coeffs).evaluate(&point);
         let eval = DensePolynomial::from_coefficients_vec(commitment.coefficients).evaluate(&point);
-        println!("eval: {}", eval);
+        assert_eq!(true_eval, eval);
+        //println!("eval: {}", eval);
         let valid = eval == eval;
         Self::Opening { valid, eval, point }
     }

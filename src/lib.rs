@@ -56,6 +56,9 @@ where
             domain,
         }
     }
+    fn width() -> usize {
+        2_usize.pow(WIDTH as u32)
+    }
     fn to_key(key: K) -> BitVec {
         let key = key.into();
         assert_eq!(key.len(), (DEPTH + 1) * WIDTH);

@@ -4,11 +4,12 @@ use crate::{
     commitment::CommitmentScheme, hash_to_field, Fr, Root, ToField, Tree, Verifier, VerkleTree,
 };
 use ark_ec::SWModelParameters;
+use ark_ff::Zero;
 use ark_pallas::PallasParameters;
-use ark_poly::EvaluationDomain;
+use ark_poly::{EvaluationDomain, Evaluations, GeneralEvaluationDomain};
 use bit_vec::BitVec;
 use itertools::{EitherOrBoth, Itertools, Position};
-use std::fmt::Debug;
+use std::{collections::HashMap, fmt::Debug};
 
 pub struct MembershipProof<P, C, V>
 where
@@ -56,11 +57,14 @@ where
     pub fn prove(&mut self, key: K) -> Option<MembershipProof<P, C, V>> {
         let key = Self::to_key(key);
         let (_, last_key) = Self::stem_and_key(&key);
-        let (path, (value, val_commit)) = self.root.get_path(key.clone())?;
+        let (path, (value, val_commit, last_poly)) = self.root.get_path(key.clone())?;
 
         let val_hash: Fr<P> = value.to_field();
         let point: Fr<P> = self.precomputation.domain().element(last_key);
-        let value_proof = self.scheme.open(val_commit.clone(), point, val_hash);
+        let last_poly = Self::sparse_to_dense_coeffs(last_poly);
+        let value_proof = self
+            .scheme
+            .open(val_commit.clone(), &*last_poly, point, val_hash);
 
         let mut path = path.into_iter();
         let extension = path.by_ref().take(1).find_or_first(|_| true).unwrap();
@@ -68,12 +72,13 @@ where
 
         let domain = self.precomputation.domain();
         let openings = path
-            .scan(extension_commitment, |prev, (commitment, segment)| {
+            .scan(extension_commitment, |prev, (commitment, segment, poly)| {
+                let poly = Self::sparse_to_dense_coeffs(poly);
                 let bytes: Vec<u8> = prev.clone().into();
                 let hash: Fr<P> = hash_to_field::hash_to_field(&*bytes);
                 let key = u32::from_le_bytes(segment);
                 let point = domain.element(key as usize);
-                let proof = self.scheme.open(commitment.clone(), point, hash);
+                let proof = self.scheme.open(commitment.clone(), &*poly, point, hash);
                 let mut commitment = commitment;
                 std::mem::swap(prev, &mut commitment);
                 Some((commitment, proof))
@@ -87,6 +92,20 @@ where
             value_opening: value_proof,
         };
         Some(proof)
+    }
+    fn sparse_to_dense_coeffs(evals: HashMap<usize, Fr<P>>) -> Vec<Fr<P>> {
+        let width = Self::width();
+        let mut dense = Vec::with_capacity(width);
+        dense.resize(width, Fr::<P>::zero());
+        evals.into_iter().for_each(|(i, eval)| {
+            dense[i] = eval;
+        });
+
+        let domain = GeneralEvaluationDomain::<Fr<P>>::new(width).unwrap();
+        let evals = Evaluations::from_vec_and_domain(dense, domain);
+        let coeffs = evals.interpolate();
+
+        coeffs.coeffs
     }
     fn stem_and_key(full_key: &BitVec) -> (BitVec, usize) {
         let stem_size = Self::stem_size();

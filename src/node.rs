@@ -33,7 +33,7 @@ where
         values_commitments: [C::Commitment; 1],
         values: HashMap<[u8; 4], V>,
     },
-    ///for default, should not exit non ephemerally
+    ///for default, should not exist non ephemerally
     Default,
 }
 
@@ -218,6 +218,17 @@ where
             }
         }
     }
+    fn extension_vec(stem: &BitVec, suffix_commitment: &C::Commitment) -> Vec<Fr<P>> {
+        let stem_hash: Fr<P> = hash_to_field::hash_to_field(&*stem.to_bytes());
+        let bytes: Vec<u8> = suffix_commitment.clone().into();
+        let suffix_commitment_hash: Fr<P> = hash_to_field::hash_to_field(&*bytes);
+        vec![
+            Fr::<P>::from(1),
+            Fr::<P>::from(1),
+            stem_hash,
+            suffix_commitment_hash,
+        ]
+    }
     fn new_value_node(
         stem: BitVec,
         key: [u8; 4],
@@ -229,16 +240,8 @@ where
         let lagrange_commitment = precomputation.get_lagrange_commitment(i as usize).clone();
         //todo slice
         let suffix_commitment = lagrange_commitment * value.to_field();
-        let bytes: Vec<u8> = suffix_commitment.clone().into();
-        let suffix_commitment_hash: Fr<P> = hash_to_field::hash_to_field(&*bytes);
-        let stem_hash: Fr<P> = hash_to_field::hash_to_field(&*stem.to_bytes());
 
-        let extension_vec = vec![
-            Fr::<P>::from(1),
-            Fr::<P>::from(1),
-            stem_hash,
-            suffix_commitment_hash,
-        ];
+        let extension_vec = Self::extension_vec(&stem, &suffix_commitment);
         //todo look at the size
         let extension_commitment = scheme.commit_to_evals(extension_vec);
         let mut values = HashMap::new();
@@ -343,10 +346,35 @@ where
         let bytes: Vec<u8> = commitment.clone().into();
         hash_to_field::hash_to_field(&*bytes)
     }
+    fn children_to_evals(
+        children: &HashMap<[u8; 4], Node<P, C, V, DEPTH, WIDTH>>,
+    ) -> HashMap<usize, Fr<P>> {
+        children
+            .iter()
+            .map(|(key, val)| {
+                let position = u32::from_le_bytes(*key) as usize;
+                let eval = val.get_commitment_hash();
+                (position, eval)
+            })
+            .collect()
+    }
+    fn leafs_to_evals(vals: &HashMap<[u8; 4], V>) -> HashMap<usize, Fr<P>> {
+        vals.iter()
+            .map(|(key, val)| {
+                let position = u32::from_le_bytes(*key) as usize;
+                let eval = val.to_field();
+                (position, eval)
+            })
+            .collect()
+    }
+
     pub fn get_path(
         &self,
         key: BitVec,
-    ) -> Option<(Vec<(C::Commitment, [u8; 4])>, (&V, &C::Commitment))> {
+    ) -> Option<(
+        Vec<(C::Commitment, [u8; 4], HashMap<usize, Fr<P>>)>,
+        (&V, &C::Commitment, HashMap<usize, Fr<P>>),
+    )> {
         match self {
             Node::Internal {
                 children,
@@ -361,7 +389,7 @@ where
                     .map(|child| child.get_path(suffix))
                     .flatten()
                     .map(|(mut path, val)| {
-                        path.push((commitment.clone(), key));
+                        path.push((commitment.clone(), key, Self::children_to_evals(children)));
                         (path, val)
                     })
             }
@@ -380,10 +408,16 @@ where
                 if common_stem == stem {
                     let key = Self::bits_to_key(key);
                     let val = values.get(&key);
+                    let evals = Self::extension_vec(&stem, &values_commitments[0])
+                        .into_iter()
+                        .enumerate()
+                        .collect();
+                    let leafs = Self::leafs_to_evals(values);
+
                     val.map(|val| {
                         (
-                            vec![(commitment.clone(), key)],
-                            (val, &values_commitments[0]),
+                            vec![(commitment.clone(), key, evals)],
+                            (val, &values_commitments[0], leafs),
                         )
                     })
                 } else {
