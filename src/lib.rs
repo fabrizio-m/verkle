@@ -2,6 +2,7 @@ use ark_ec::{models::short_weierstrass_jacobian::GroupAffine, AffineCurve, SWMod
 use ark_poly::{EvaluationDomain, GeneralEvaluationDomain};
 use bit_vec::BitVec;
 use commitment::CommitmentScheme;
+use ipapc::IpaScheme;
 use node::{Node, Precomputation};
 use std::{fmt::Debug, marker::PhantomData};
 
@@ -25,6 +26,8 @@ where
     key: PhantomData<K>,
     precomputation: Precomputation<P, C>,
 }
+
+pub type SimpleTree<P, K, V> = VerkleTree<P, IpaScheme<P>, K, V, 3, 8>;
 
 impl<P, C, K, V, const DEPTH: usize, const WIDTH: usize> VerkleTree<P, C, K, V, DEPTH, WIDTH>
 where
@@ -89,9 +92,7 @@ where
     }*/
 }
 
-//pub struct VerkleTree<P, C, K, V, const KEY_SIZE: usize, const WIDTH: usize>
 trait Tree {
-    //type Node = node::Node<Self::P, Self::C, Self::K, Self::V, Self::KEY_SIZE, Self::WIDTH>;
     type Node;
     type Root;
     type Verifier;

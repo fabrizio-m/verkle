@@ -1,12 +1,12 @@
 use super::CommitmentScheme;
 use ark_ec::SWModelParameters;
-use ipapc::{Commitment, IpaScheme, Opening};
+pub use ipapc::{Commitment, Init, IpaScheme, Opening};
 
 impl<P: SWModelParameters> CommitmentScheme<P> for IpaScheme<P>
 where
     P: Eq + PartialEq + Clone,
 {
-    type Init = ipapc::Init<P>;
+    type Init = Init<P>;
 
     type Commitment = Commitment<P, false>;
 

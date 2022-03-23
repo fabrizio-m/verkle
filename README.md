@@ -9,7 +9,7 @@ WIP
 - [x] Verify.
 - [x] Optimized verifier.
 - [ ] Efficient batch proofs.
-- [ ] Provide a default simplified version.  
+- [x] Provide a default simplified version.  
 - [ ] Serialization.
 - [ ] Benchmarks.
 - [ ] More tests.
