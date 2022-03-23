@@ -61,7 +61,7 @@ where
         let root = repeat(Fr::<P>::from(0))
             .take(2_usize.pow(WIDTH as u32))
             .collect::<Vec<_>>();
-        println!("root size: {}", root.len());
+        //println!("root size: {}", root.len());
         let root_commitment = scheme.commit(root);
         Self::Internal {
             commitment: root_commitment,
@@ -229,6 +229,9 @@ where
             suffix_commitment_hash,
         ]
     }
+    fn width() -> usize {
+        2_usize.pow(WIDTH as u32)
+    }
     fn new_value_node(
         stem: BitVec,
         key: [u8; 4],
@@ -243,7 +246,8 @@ where
 
         let extension_vec = Self::extension_vec(&stem, &suffix_commitment);
         //todo look at the size
-        let extension_commitment = scheme.commit_to_evals(extension_vec);
+        let domain = GeneralEvaluationDomain::new(Self::width()).unwrap();
+        let extension_commitment = scheme.commit_to_evals(extension_vec, domain);
         let mut values = HashMap::new();
         values.insert(key, value);
 

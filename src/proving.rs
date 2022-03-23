@@ -1,5 +1,3 @@
-#[cfg(test)]
-use crate::commitment::mock::MockScheme;
 use crate::{
     commitment::CommitmentScheme, hash_to_field, Fr, Root, ToField, Tree, Verifier, VerkleTree,
 };
@@ -8,6 +6,8 @@ use ark_ff::Zero;
 use ark_pallas::PallasParameters;
 use ark_poly::{EvaluationDomain, Evaluations, GeneralEvaluationDomain};
 use bit_vec::BitVec;
+#[cfg(test)]
+use ipapc::IpaScheme;
 use itertools::{EitherOrBoth, Itertools, Position};
 use std::{collections::HashMap, fmt::Debug};
 
@@ -193,7 +193,8 @@ where
             stem_hash,
             suffix_commitment_hash,
         ];
-        let extension_commitment = scheme.commit_to_evals(extension_vec);
+        let domain = GeneralEvaluationDomain::new(Self::width()).unwrap();
+        let extension_commitment = scheme.commit_to_evals(extension_vec, domain);
         if extension_commitment != last_commitment {
             return None;
         }
@@ -231,10 +232,11 @@ impl ToField<PallasParameters> for u128 {
     }
 }
 #[cfg(test)]
-type TestTree = VerkleTree<PallasParameters, MockScheme, BitVec, u128, 3, 8>;
+type TestTree = VerkleTree<PallasParameters, IpaScheme<PallasParameters>, BitVec, u128, 3, 8>;
 #[test]
 fn prove() {
-    let mut tree = TestTree::new(());
+    let init = ipapc::Init::Seed(1);
+    let mut tree = TestTree::new(init);
 
     let make_key = |key: [u8; 4]| BitVec::from_bytes(&key);
     /*let print_commit = |tree: &TestTree| {
@@ -257,6 +259,7 @@ fn prove() {
     //tree.print();
     //print_commit(&tree);
     let proof = tree.prove(make_key([0, 1, 2, 3])).unwrap();
-    let mut verifier = TestTree::new_verifier(());
+    let init = ipapc::Init::Seed(1);
+    let mut verifier = TestTree::new_verifier(init);
     verifier.verify(root, proof).unwrap();
 }

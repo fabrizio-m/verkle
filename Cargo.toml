@@ -1,6 +1,6 @@
 [package]
 name = "verkle"
-version = "0.1.1"
+version = "0.2.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -16,3 +16,4 @@ ark-pallas = "0.3"
 bit-vec = "0.6"
 itertools = "0.10"
 take_mut = "0.2"
+ipapc = { git = "https://github.com/Strytyp/ipapc"}

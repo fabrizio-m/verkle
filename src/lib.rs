@@ -35,7 +35,7 @@ where
     K: Into<BitVec>,
 {
     pub fn new(init: C::Init) -> Self {
-        let mut scheme = C::init(init);
+        let mut scheme = C::init(init, WIDTH as u8);
         let root = Node::new_root(&mut scheme);
         let domain = GeneralEvaluationDomain::new(2_usize.pow(WIDTH as u32)).unwrap();
         let precomputation = Precomputation::new(&mut scheme, domain);
@@ -47,7 +47,7 @@ where
         }
     }
     pub fn new_verifier(init: C::Init) -> Verifier<P, C, K, V, DEPTH, WIDTH> {
-        let scheme = C::init(init);
+        let scheme = C::init(init, WIDTH as u8);
         let domain = GeneralEvaluationDomain::new(2_usize.pow(WIDTH as u32)).unwrap();
         Verifier {
             scheme,

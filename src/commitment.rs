@@ -1,5 +1,5 @@
 use crate::Fr;
-use ark_ec::SWModelParameters;
+use ark_ec::{short_weierstrass_jacobian::GroupAffine, SWModelParameters};
 use ark_ff::{batch_inversion, FftField, Zero};
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, GeneralEvaluationDomain,
@@ -10,11 +10,12 @@ use std::{
     ops::{Add, Mul},
 };
 
-pub mod mock;
+pub mod ipa;
 
 pub trait CommitmentScheme<P: SWModelParameters>
 where
     Fr<P>: Zero,
+    GroupAffine<P>: Debug,
     Self::Commitment: Add<Output = Self::Commitment>
         + Mul<Fr<P>, Output = Self::Commitment>
         + Into<Vec<u8>>
@@ -25,10 +26,8 @@ where
     type Init;
     type Commitment;
     type Opening;
-    //type Extra;
-    const LENGTH: u8;
 
-    fn init(init: Self::Init) -> Self;
+    fn init(init: Self::Init, degree_bound: u8) -> Self;
     fn commit(&mut self, coefficients: impl Into<Vec<Fr<P>>>) -> Self::Commitment;
     fn open(
         &mut self,
@@ -75,9 +74,11 @@ where
         commitment + (lagrange_commitment * (new - previous))
     }
 
-    fn commit_to_evals(&mut self, evals: Vec<Fr<P>>) -> Self::Commitment {
-        let domain =
-            GeneralEvaluationDomain::<Fr<P>>::new(2_usize.pow(Self::LENGTH as u32)).unwrap();
+    fn commit_to_evals(
+        &mut self,
+        evals: Vec<Fr<P>>,
+        domain: GeneralEvaluationDomain<Fr<P>>,
+    ) -> Self::Commitment {
         let evals = Evaluations::from_vec_and_domain(evals, domain);
         let coeffs = evals.interpolate();
 

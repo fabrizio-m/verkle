@@ -1,14 +1,14 @@
 use super::{Node, Precomputation};
-use crate::commitment::{mock::MockScheme, CommitmentScheme};
 use ark_pallas::PallasParameters;
 use ark_poly::{EvaluationDomain, GeneralEvaluationDomain};
 use bit_vec::BitVec;
+use ipapc::IpaScheme;
 
-type TestNode = Node<PallasParameters, MockScheme, u128, 3, 8>;
+type TestNode = Node<PallasParameters, IpaScheme<PallasParameters>, u128, 3, 8>;
 
 #[test]
 fn test1() {
-    let mut scheme = MockScheme::init(());
+    let mut scheme = IpaScheme::init(ipapc::Init::Seed(1), 8);
     let root = TestNode::new_root(&mut scheme);
     let bytes = [2_u8, 3, 8, 1];
     let domain = GeneralEvaluationDomain::new(255).unwrap();
