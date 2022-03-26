@@ -16,12 +16,12 @@ where
         IpaScheme::init(init, degree_bound)
     }
 
-    fn commit(&mut self, coefficients: impl Into<Vec<crate::Fr<P>>>) -> Self::Commitment {
+    fn commit(&self, coefficients: impl Into<Vec<crate::Fr<P>>>) -> Self::Commitment {
         IpaScheme::commit(&self, coefficients.into())
     }
 
     fn open(
-        &mut self,
+        &self,
         commitment: Self::Commitment,
         coeffs: &[crate::Fr<P>],
         point: crate::Fr<P>,
@@ -31,7 +31,7 @@ where
     }
 
     fn verify(
-        &mut self,
+        &self,
         commitment: Self::Commitment,
         _point: crate::Fr<P>,
         _eval: crate::Fr<P>,

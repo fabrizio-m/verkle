@@ -28,16 +28,16 @@ where
     type Opening;
 
     fn init(init: Self::Init, degree_bound: u8) -> Self;
-    fn commit(&mut self, coefficients: impl Into<Vec<Fr<P>>>) -> Self::Commitment;
+    fn commit(&self, coefficients: impl Into<Vec<Fr<P>>>) -> Self::Commitment;
     fn open(
-        &mut self,
+        &self,
         commitment: Self::Commitment,
         coeffs: &[Fr<P>],
         point: Fr<P>,
         eval: Fr<P>,
     ) -> Self::Opening;
     fn verify(
-        &mut self,
+        &self,
         commitment: Self::Commitment,
         point: Fr<P>,
         eval: Fr<P>,
@@ -46,7 +46,7 @@ where
     ///returns the commitment to the polynomial that evaluates to one for the ith element of the
     ///domain and zero for any other element
     fn lagrange_basis_commitments(
-        &mut self,
+        &self,
         domain: &impl EvaluationDomain<Fr<P>>,
     ) -> Vec<Self::Commitment> {
         //let domain =
@@ -64,7 +64,7 @@ where
             .collect()
     }
     fn update_commitment(
-        &mut self,
+        &self,
         commitment: Self::Commitment,
         lagrange_commitment: Self::Commitment,
         previous: Option<Fr<P>>,
@@ -75,7 +75,7 @@ where
     }
 
     fn commit_to_evals(
-        &mut self,
+        &self,
         evals: Vec<Fr<P>>,
         domain: GeneralEvaluationDomain<Fr<P>>,
     ) -> Self::Commitment {
