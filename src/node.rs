@@ -33,22 +33,8 @@ where
         values_commitments: [C::Commitment; 1],
         values: HashMap<[u8; 4], V>,
     },
-    ///for default, should not exist non ephemerally
-    Default,
 }
 
-impl<P, C, V, const DEPTH: usize, const WIDTH: usize> Default for Node<P, C, V, DEPTH, WIDTH>
-where
-    P: SWModelParameters,
-    Fr<P>: From<i64>,
-    C: CommitmentScheme<P>,
-    //todo clone is temporary
-    V: ToField<P> + Clone + Debug,
-{
-    fn default() -> Self {
-        Self::Default
-    }
-}
 impl<P, C, V, const DEPTH: usize, const WIDTH: usize> Node<P, C, V, DEPTH, WIDTH>
 where
     P: SWModelParameters,
@@ -85,9 +71,6 @@ where
                 let suffix: [u8; 4] = suffix.try_into().unwrap();
                 values.get(&suffix)
             }
-            _ => {
-                unreachable!();
-            }
         }
     }
     ///splits the full key in stem and last key
@@ -121,20 +104,15 @@ where
                     let prev_hash = children.get(&prefix).unwrap().get_commitment_hash();
                     let position = u32::from_le_bytes(prefix) as usize;
                     let child = children
-                        .entry(prefix)
-                        .and_modify(|child| {
+                        .get_mut(&prefix)
+                        .map(|child| {
                             stem_so_far.append(&mut prefix_bits);
-                            let old_child = std::mem::take(child);
-                            let new_child = old_child.set(
-                                stem_so_far,
-                                suffix_bits,
-                                value,
-                                scheme,
-                                precomputation,
-                            );
-                            *child = new_child;
+                            take_mut::take(child, |child| {
+                                child.set(stem_so_far, suffix_bits, value, scheme, precomputation)
+                            });
+                            child
                         })
-                        .or_default();
+                        .unwrap();
                     let child_commitment_hash = child.get_commitment_hash();
                     let commitment = scheme.update_commitment(
                         commitment,
@@ -212,9 +190,6 @@ where
                     let new_node = Self::fix_collision(stem_so_far, left, right, precomputation);
                     new_node
                 }
-            }
-            _ => {
-                unreachable!();
             }
         }
     }
@@ -316,9 +291,6 @@ where
             Node::Internal { .. } => {
                 panic!("only for value nodes");
             }
-            Node::Default => {
-                unreachable!()
-            }
         }
     }
     pub(crate) fn bits_to_key(bits: BitVec) -> [u8; 4] {
@@ -331,9 +303,6 @@ where
         let commitment = match self {
             Node::Internal { commitment, .. } => commitment,
             Node::Value { commitment, .. } => commitment,
-            Node::Default => {
-                unreachable!()
-            }
         };
         let bytes: Vec<u8> = commitment.clone().into();
         hash_to_field::hash_to_field(&*bytes)
@@ -343,7 +312,6 @@ where
             Node::Internal { commitment, .. } | Node::Value { commitment, .. } => {
                 commitment.clone()
             }
-            Node::Default => unreachable!(),
         }
     }
     fn hash(commitment: &C::Commitment) -> Fr<P> {
@@ -428,9 +396,6 @@ where
                     None
                 }
             }
-            _ => {
-                unreachable!();
-            }
         }
     }
 }
@@ -465,9 +430,6 @@ where
                 .field("values_commitments", values_commitments)
                 .field("values", &values)
                 .finish(),
-            Node::Default => {
-                unreachable!()
-            }
         }
     }
 }
