@@ -5,6 +5,7 @@ use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, GeneralEvaluationDomain,
     UVPolynomial,
 };
+use itertools::Itertools;
 use std::{
     fmt::Debug,
     ops::{Add, Mul},
@@ -112,30 +113,14 @@ fn lagrange() {
     }
 }
 pub(crate) fn barycentric_weights<F: FftField>(domain: &impl EvaluationDomain<F>) -> Vec<F> {
-    let roots = domain.elements().collect::<Vec<_>>();
-    let weight = |j, elem| {
-        roots
-            .iter()
-            .enumerate()
-            .map(
-                |(index, root)| {
-                    if index == j {
-                        F::one()
-                    } else {
-                        elem - root
-                    }
-                },
-            )
-            .reduce(Mul::mul)
-            .unwrap()
-    };
-    let mut weights = domain
-        .elements()
-        .enumerate()
-        .map(|(index, elem)| weight(index, elem))
-        .collect::<Vec<_>>();
+    let size = domain.size_as_field_element();
+    let mut weights = domain.elements().collect_vec();
     batch_inversion(&mut weights);
-
+    let mut weights = weights
+        .into_iter()
+        .map(|weight| weight * size)
+        .collect_vec();
+    batch_inversion(&mut weights);
     weights
 }
 pub(crate) fn lagrange_poly<F: FftField>(
