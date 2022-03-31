@@ -93,6 +93,7 @@ where
         };
         Some(proof)
     }
+    ///turns evals into a dense vec of coefficients where missing evals are zero
     fn sparse_to_dense_coeffs(evals: HashMap<usize, Fr<P>>) -> Vec<Fr<P>> {
         let width = Self::width();
         let mut dense = Vec::with_capacity(width);

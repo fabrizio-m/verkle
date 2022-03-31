@@ -20,7 +20,7 @@ pub(crate) enum Node<P, C, V, const DEPTH: usize, const WIDTH: usize>
 where
     P: SWModelParameters,
     C: CommitmentScheme<P>,
-    V: ToField<P> + Clone + Debug,
+    V: ToField<P> + Debug,
     Fr<P>: From<i64>,
 {
     Internal {
@@ -40,14 +40,12 @@ where
     P: SWModelParameters,
     Fr<P>: From<i64>,
     C: CommitmentScheme<P>,
-    //todo clone is temporary
-    V: ToField<P> + Clone + Debug,
+    V: ToField<P> + Debug,
 {
     pub(crate) fn new_root(scheme: &mut C) -> Self {
         let root = repeat(Fr::<P>::from(0))
-            .take(2_usize.pow(WIDTH as u32))
+            .take(Self::width())
             .collect::<Vec<_>>();
-        //println!("root size: {}", root.len());
         let root_commitment = scheme.commit(root);
         Self::Internal {
             commitment: root_commitment,
@@ -204,6 +202,7 @@ where
             suffix_commitment_hash,
         ]
     }
+    ///width as a power
     fn width() -> usize {
         2_usize.pow(WIDTH as u32)
     }
@@ -216,7 +215,6 @@ where
     ) -> Self {
         let i = u32::from_le_bytes(key);
         let lagrange_commitment = precomputation.get_lagrange_commitment(i as usize).clone();
-        //todo slice
         let suffix_commitment = lagrange_commitment * value.to_field();
 
         let extension_vec = Self::extension_vec(&stem, &suffix_commitment);
@@ -405,8 +403,7 @@ where
     P: SWModelParameters,
     Fr<P>: From<i64>,
     C: CommitmentScheme<P>,
-    //todo clone is temporary
-    V: ToField<P> + Clone + Debug,
+    V: ToField<P> + Debug,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {

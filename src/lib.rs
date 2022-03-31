@@ -4,6 +4,7 @@ use bit_vec::BitVec;
 use commitment::CommitmentScheme;
 use ipapc::IpaScheme;
 use node::{Node, Precomputation};
+pub use proving::MembershipProof;
 use std::{fmt::Debug, marker::PhantomData};
 
 pub mod commitment;
@@ -59,6 +60,7 @@ where
             domain,
         }
     }
+    ///width as a power
     fn width() -> usize {
         2_usize.pow(WIDTH as u32)
     }
