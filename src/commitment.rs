@@ -1,24 +1,26 @@
 use crate::Fr;
 use ark_ec::{short_weierstrass_jacobian::GroupAffine, SWModelParameters};
-use ark_ff::{batch_inversion, FftField, Zero};
+use ark_ff::{batch_inversion, FftField, Field, Zero};
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, GeneralEvaluationDomain,
-    UVPolynomial,
+    Radix2EvaluationDomain, UVPolynomial,
 };
-use itertools::Itertools;
+use itertools::{izip, Itertools};
 use std::{
     fmt::Debug,
-    ops::{Add, Mul},
+    ops::{Add, Mul, Neg, Sub},
 };
 
 pub mod ipa;
 
 pub trait CommitmentScheme<P: SWModelParameters>
 where
-    Fr<P>: Zero,
+    Fr<P>: Zero + Field,
     GroupAffine<P>: Debug,
     Self::Commitment: Add<Output = Self::Commitment>
+        + Sub<Output = Self::Commitment>
         + Mul<Fr<P>, Output = Self::Commitment>
+        + Neg
         + Into<Vec<u8>>
         + Clone
         + Debug
@@ -49,20 +51,26 @@ where
     fn lagrange_basis_commitments(
         &self,
         domain: &impl EvaluationDomain<Fr<P>>,
-    ) -> Vec<Self::Commitment> {
-        //let domain =
-        //GeneralEvaluationDomain::<Fr<P>>::new(2_usize.pow(Self::LENGTH as u32)).unwrap();
-        let weights = barycentric_weights(domain);
-        domain
-            .elements()
-            .into_iter()
-            .zip(weights.into_iter())
-            .map(|(root, weight)| {
-                let poly = lagrange_poly(domain, root, weight);
-                let commitment = self.commit(poly.coeffs);
-                commitment
-            })
-            .collect()
+    ) -> Vec<Self::Commitment>
+    where
+        Self: Sized,
+    {
+        match self.reference_string() {
+            Some(string) => ifft_lagrange_commitment::<P, Self>(string),
+            None => {
+                let weights = barycentric_weights(domain);
+                domain
+                    .elements()
+                    .into_iter()
+                    .zip(weights.into_iter())
+                    .map(|(root, weight)| {
+                        let poly = lagrange_poly(domain, root, weight);
+                        let commitment = self.commit(poly.coeffs);
+                        commitment
+                    })
+                    .collect()
+            }
+        }
     }
     fn update_commitment(
         &self,
@@ -84,6 +92,10 @@ where
         let coeffs = evals.interpolate();
 
         self.commit(coeffs.coeffs)
+    }
+    ///should return the commitments to the n monomials with coefficient 1, usually the reference string
+    fn reference_string(&self) -> Option<Vec<Self::Commitment>> {
+        None
     }
 }
 
@@ -132,4 +144,57 @@ pub(crate) fn lagrange_poly<F: FftField>(
     let lhs = &DensePolynomial::<F>::from_coefficients_slice(&[-F::one()]) + &vanishing_poly;
     let rhs = DensePolynomial::from_coefficients_slice(&[-root, F::one()]);
     (&lhs / &rhs).mul(inverted_weight)
+}
+
+///compute all lagrange commitments in n log(n)
+fn ifft_lagrange_commitment<P, C>(unit_monomials: Vec<C::Commitment>) -> Vec<C::Commitment>
+where
+    P: SWModelParameters,
+    C: CommitmentScheme<P>,
+{
+    let inverted_size = Radix2EvaluationDomain::<Fr<P>>::new(unit_monomials.len())
+        .unwrap()
+        .size_as_field_element()
+        .inverse()
+        .unwrap();
+    let mut res = fft::<P, C>(unit_monomials).into_iter();
+    let first = res.by_ref().next().unwrap();
+    [first]
+        .into_iter()
+        .chain(res.rev())
+        .map(|e| e * inverted_size)
+        .collect_vec()
+}
+
+fn fft<P, C>(coeffs: Vec<C::Commitment>) -> Vec<C::Commitment>
+where
+    P: SWModelParameters,
+    C: CommitmentScheme<P>,
+{
+    let len = coeffs.len();
+    assert!(len.is_power_of_two());
+    if coeffs.len() == 1 {
+        return coeffs;
+    }
+    let (even, odd): (Vec<C::Commitment>, Vec<C::Commitment>) = coeffs
+        .iter()
+        .cloned()
+        .enumerate()
+        .partition_map(|(i, item)| match i % 2 == 0 {
+            true => itertools::Either::Left(item),
+            false => itertools::Either::Right(item),
+        });
+    let [even, odd] = [even, odd].map(|coeffs| fft::<P, C>(coeffs));
+    let mut result = coeffs;
+    let (left, right) = result.split_at_mut(len / 2);
+    let domain = {
+        let domain = Radix2EvaluationDomain::<Fr<P>>::new(len).unwrap();
+        domain.elements()
+    };
+    for (even, odd, left, right, domain) in izip!(even, odd, left, right, domain) {
+        let rhs = odd * domain;
+        *left = even.clone() + rhs.clone();
+        *right = even - rhs;
+    }
+    result
 }

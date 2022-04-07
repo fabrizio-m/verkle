@@ -40,4 +40,11 @@ where
         let verify = IpaScheme::verify(&self, commitment, opening);
         verify.is_some()
     }
+
+    fn lagrange_basis_commitments(
+        &self,
+        _domain: &impl ark_poly::EvaluationDomain<crate::Fr<P>>,
+    ) -> Vec<Self::Commitment> {
+        self.lagrange_commitments()
+    }
 }

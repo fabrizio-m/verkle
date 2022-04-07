@@ -1,7 +1,4 @@
-use crate::{
-    commitment::{barycentric_weights, lagrange_poly, CommitmentScheme},
-    hash_to_field, Fr, ToField,
-};
+use crate::{commitment::CommitmentScheme, hash_to_field, Fr, ToField};
 use ark_ec::SWModelParameters;
 use ark_poly::{EvaluationDomain, GeneralEvaluationDomain};
 use bit_vec::BitVec;
@@ -202,7 +199,7 @@ where
             suffix_commitment_hash,
         ]
     }
-    ///width as a power
+    ///width as a power of two
     fn width() -> usize {
         2_usize.pow(WIDTH as u32)
     }
@@ -438,16 +435,7 @@ pub(crate) struct Precomputation<P: SWModelParameters, C: CommitmentScheme<P>> {
 
 impl<P: SWModelParameters, C: CommitmentScheme<P>> Precomputation<P, C> {
     pub(crate) fn new(scheme: &mut C, domain: GeneralEvaluationDomain<Fr<P>>) -> Self {
-        let weights = barycentric_weights(&domain);
-        let lagrange_commitments = domain
-            .elements()
-            .into_iter()
-            .zip(weights.into_iter())
-            .map(|(root, weight)| {
-                let poly = lagrange_poly(&domain, root, weight);
-                scheme.commit(poly.coeffs)
-            })
-            .collect();
+        let lagrange_commitments = scheme.lagrange_basis_commitments(&domain);
         Self {
             lagrange_commitments,
             domain,
